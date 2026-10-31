@@ -153,6 +153,7 @@ button{font:inherit;cursor:default}
     <button class="btn primary" id="bHint">💡 Tipp zeigen</button>
     <button class="btn" id="bRestart">↺ Übung neu starten</button>
     <button class="btn" id="bMenu">☰ Übersicht</button>
+    <button class="btn" id="bExitFs" hidden>⤢ Vollbild beenden</button>
   </div>
 </div>
 
@@ -342,9 +343,9 @@ function highlight(){
   if (q) document.querySelectorAll(q).forEach(e => e.classList.add('pulse'));
 }
 let toastT;
-function toast(msg){
+function toast(msg, ms){
   const t = $('#toast'); t.textContent = msg; t.classList.add('on');
-  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2600);
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms || 2600);
 }
 
 /* =========================================================
@@ -512,6 +513,21 @@ document.addEventListener('keydown', e => {
   }
   if (e.key==='Escape' && S.menu) closeMenu();
 });
+
+/* Esc lange gedrückt halten (1,5 s) beendet das Vollbild.
+   Nötig, weil keyboard.lock(['Escape']) den kurzen Esc-Druck für Menüs abfängt. */
+const ESC_HOLD_MS = 1500;
+let escTimer = null;
+document.addEventListener('keydown', e => {
+  if (e.key!=='Escape' || e.repeat || !document.fullscreenElement) return;
+  clearTimeout(escTimer);
+  escTimer = setTimeout(() => { escTimer = null; exitFullscreen(); }, ESC_HOLD_MS);
+  setTimeout(() => { if (escTimer) toast('Esc weiter gedrückt halten, um das Vollbild zu beenden …', ESC_HOLD_MS); }, 400);
+});
+document.addEventListener('keyup', e => {
+  if (e.key==='Escape'){ clearTimeout(escTimer); escTimer = null; }
+});
+addEventListener('blur', () => { clearTimeout(escTimer); escTimer = null; });
 
 /* =========================================================
    Übungen
@@ -761,6 +777,17 @@ function renderCoach(){
 }
 function layout(){ document.documentElement.style.setProperty('--coach-h', $('#coach').offsetHeight + 'px'); }
 
+function exitFullscreen(){
+  if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock();
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+}
+document.addEventListener('fullscreenchange', () => {
+  const fs = !!document.fullscreenElement;
+  $('#bExitFs').hidden = !fs;
+  if (fs) toast('Vollbild verlassen: Esc-Taste lange gedrückt halten', 5000);
+  else if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock();
+  layout();
+});
 function goFullscreen(){
   const d = document.documentElement;
   if (document.fullscreenElement || !d.requestFullscreen) return;
@@ -815,6 +842,7 @@ $('#overlay').addEventListener('click', e => {
 $('#bHint').addEventListener('click', showHint);
 $('#bRestart').addEventListener('click', () => { if (cur.level!=null) startLevel(cur.level); });
 $('#bMenu').addEventListener('click', () => showOverview(false));
+$('#bExitFs').addEventListener('click', exitFullscreen);
 
 /* =========================================================
    Start
