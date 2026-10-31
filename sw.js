@@ -1,5 +1,5 @@
 // Bei jeder Änderung an den Dateien VERSION hochzählen, damit Mamas PC die neue Fassung lädt.
-const VERSION = 'pc-training-v2';
+const VERSION = 'pc-training-v3';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png',
