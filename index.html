@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b3f9e">
+<meta name="description" content="Maus, Ordner, Kopieren und Papierkorb in Ruhe üben.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.ico" sizes="any">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>PC-Training</title>
+<style>
+:root{
+  --coach-h:128px; --task-h:52px;
+  --accent:#0067c0; --ok:#0f7b0f;
+  --font:"Segoe UI Variable","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;font-family:var(--font);user-select:none;-webkit-user-select:none;background:#0b2a4a}
+button{font:inherit;cursor:default}
+
+/* ---------- Trainer-Leiste ---------- */
+#coach{position:fixed;left:0;right:0;top:0;min-height:112px;background:#fffdf4;border-bottom:3px solid #f0c040;
+  display:grid;grid-template-columns:230px 1fr auto;gap:24px;align-items:center;padding:14px 24px;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+#meta .lv{font-size:14px;color:#6b6b6b;text-transform:uppercase;letter-spacing:.06em}
+#meta .lt{font-size:21px;font-weight:600;color:#1b1b1b;margin:2px 0 8px}
+.dots{display:flex;gap:6px;flex-wrap:wrap}
+.dots i{width:12px;height:12px;border-radius:50%;background:#e2ddc8}
+.dots i.d{background:#7fb77f}.dots i.c{background:#f0b400;box-shadow:0 0 0 3px #ffe9a8}
+#instr{font-size:25px;line-height:1.3;color:#1b1b1b}
+#fb{margin-top:8px;font-size:19px;min-height:30px}
+#fb span{display:inline-block;padding:4px 12px;border-radius:8px}
+#fb .ok{color:var(--ok);background:#e3f4e3}
+#fb .warn{color:#7a4100;background:#ffefcf}
+#fb .hint{color:#0b3d6e;background:#e6f0fb}
+#cbtns{display:flex;flex-direction:column;gap:8px}
+.btn{font-size:17px;padding:9px 16px;border:1px solid #c9c9c9;background:#fff;border-radius:10px;cursor:pointer;white-space:nowrap;text-align:left}
+.btn:hover{background:#f2f2f2}
+.btn.primary{background:#ffd75e;border-color:#deb200}
+.btn.primary:hover{background:#ffcd33}
+
+/* ---------- Desktop ---------- */
+#desktop{position:fixed;left:0;right:0;top:var(--coach-h);bottom:var(--task-h);overflow:hidden;
+  background:radial-gradient(ellipse 70% 80% at 62% 60%,#8cc8ff 0%,#3d86e6 22%,#1a55b8 45%,#0e2f78 70%,#081a45 100%)}
+#icons{position:absolute;inset:0;display:grid;grid-auto-flow:column;grid-template-rows:repeat(auto-fill,112px);grid-auto-columns:104px;gap:4px;padding:10px;align-content:start}
+.icon{width:100px;height:108px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px;border-radius:6px;border:1px solid transparent}
+.icon svg{width:58px;height:58px;flex:none;pointer-events:none}
+.icon span{font-size:15px;line-height:1.2;text-align:center;overflow-wrap:anywhere;pointer-events:none;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#icons .icon span{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+#icons .icon:hover{background:rgba(255,255,255,.12)}
+#icons .icon.sel{background:rgba(255,255,255,.28);border-color:rgba(255,255,255,.55)}
+.icon.cut svg{opacity:.4}
+.rn{width:96px;font:inherit;font-size:15px;padding:2px 4px;border:1px solid var(--accent);border-radius:3px;outline:none;text-align:center;user-select:text;-webkit-user-select:text}
+
+/* ---------- Explorer-Fenster ---------- */
+.win{position:absolute;top:22px;right:28px;width:min(740px,calc(100% - 260px));height:min(520px,calc(100% - 44px));min-width:420px;
+  background:#f3f3f3;border-radius:8px;border:1px solid #9a9a9a;box-shadow:0 10px 40px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden}
+.win[hidden]{display:none}
+.win.max{top:0;right:0;left:0;bottom:0;width:auto;height:auto;border-radius:0;border:none}
+.wbar{height:42px;display:flex;align-items:center;justify-content:space-between;background:#eef2f6;flex:none}
+.wtitle{display:flex;align-items:center;gap:8px;padding-left:14px;font-size:15px;color:#1b1b1b}
+.wtitle svg{width:20px;height:20px}
+.wctl{display:flex;height:100%}
+.wctl button{width:52px;height:100%;border:none;background:transparent;font-size:18px;color:#1b1b1b}
+.wctl button:hover{background:#dcdfe3}
+.wctl button.x:hover{background:#c42b1c;color:#fff}
+.wtool{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f9f9f9;border-bottom:1px solid #e3e3e3;flex:none}
+.back{width:40px;height:34px;border:none;border-radius:6px;background:transparent;font-size:22px;color:#1b1b1b}
+.back:hover{background:#e6e6e6}
+.back.dis{color:#bbb;pointer-events:none}
+.addr{flex:1;height:34px;display:flex;align-items:center;padding:0 12px;border:1px solid #d6d6d6;border-radius:6px;background:#fff;font-size:15px;color:#333}
+.wbody{flex:1;display:flex;min-height:0}
+.wnav{width:180px;flex:none;padding:8px 6px;background:#f9f9f9;border-right:1px solid #e3e3e3}
+.nav{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;font-size:15px;color:#1b1b1b}
+.nav svg{width:22px;height:22px;pointer-events:none}
+.nav span{pointer-events:none}
+.nav:hover{background:#ebebeb}
+.nav.on{background:#e0e8f2}
+.win-content{flex:1;background:#fff;display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px;padding:12px;overflow:auto;position:relative}
+.win-content .icon span{color:#1b1b1b}
+.win-content .icon:hover{background:#e5f3ff}
+.win-content .icon.sel{background:#cce8ff;border-color:#99d1ff}
+.empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#888;font-size:17px;pointer-events:none}
+
+/* ---------- Kontextmenü ---------- */
+.menu{position:fixed;min-width:250px;background:#f9f9f9;border:1px solid #d4d4d4;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.3);padding:4px;z-index:100;font-size:16px;color:#1b1b1b}
+.menu[hidden]{display:none}
+.menu .row{display:flex;gap:2px;padding:2px 2px 6px;margin-bottom:4px;border-bottom:1px solid #e3e3e3}
+.ib{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 4px;border-radius:5px}
+.ib svg{width:24px;height:24px;pointer-events:none}
+.ib small{font-size:12px;color:#444;pointer-events:none}
+.mi{position:relative;display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:5px}
+.mi svg{width:20px;height:20px;flex:none;pointer-events:none}
+.mi span{flex:1;pointer-events:none}
+.mi b{font-weight:400;color:#666;pointer-events:none}
+.mi:hover,.ib:hover{background:#e8e8e8}
+.mi.dis,.ib.dis{opacity:.38}
+.mi.dis:hover,.ib.dis:hover{background:transparent}
+.sep{height:1px;background:#e3e3e3;margin:4px 6px}
+.submenu{position:absolute;left:calc(100% + 2px);top:-5px;min-width:190px}
+.submenu.left{left:auto;right:calc(100% + 2px)}
+
+/* ---------- Taskleiste ---------- */
+#taskbar{position:fixed;left:0;right:0;bottom:0;height:var(--task-h);background:rgba(238,241,245,.95);border-top:1px solid #c8c8c8;display:flex;align-items:center;justify-content:center;z-index:40}
+.tbc{display:flex;gap:4px}
+.tb{position:relative;width:46px;height:44px;border:none;border-radius:6px;background:transparent;display:flex;align-items:center;justify-content:center}
+.tb:hover{background:rgba(0,0,0,.07)}
+.tb svg{width:26px;height:26px;pointer-events:none}
+.tb.open::after{content:"";position:absolute;bottom:2px;left:50%;width:6px;height:3px;border-radius:2px;background:#7a7a7a;transform:translateX(-50%)}
+.tb.active{background:rgba(0,0,0,.06)}
+.tb.active::after{width:18px;background:var(--accent)}
+.clock{position:absolute;right:16px;text-align:right;font-size:13px;line-height:1.3;color:#1b1b1b}
+
+/* ---------- Hinweis-Markierung ---------- */
+.pulse{outline:4px solid #ffb900 !important;outline-offset:2px;animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{50%{outline-color:rgba(255,185,0,.2)}}
+
+/* ---------- Toast ---------- */
+#toast{position:fixed;right:16px;bottom:calc(var(--task-h) + 14px);background:#202020;color:#fff;padding:12px 18px;border-radius:8px;font-size:16px;z-index:120;opacity:0;transition:opacity .25s;pointer-events:none}
+#toast.on{opacity:1}
+
+/* ---------- Übersicht / Dialoge ---------- */
+#overlay{position:fixed;inset:0;background:rgba(5,15,35,.62);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
+#overlay[hidden]{display:none}
+.card{background:#fff;border-radius:16px;padding:30px 34px;max-width:760px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.4);user-select:none}
+.card h1{font-size:30px;margin:0 0 6px}
+.card p{font-size:19px;line-height:1.45;color:#333;margin:6px 0 18px}
+.lvls{display:grid;gap:10px}
+.lvbtn{display:flex;align-items:center;gap:16px;width:100%;padding:14px 18px;border:2px solid #d9d9d9;border-radius:12px;background:#fafafa;text-align:left;cursor:pointer}
+.lvbtn:hover{border-color:#f0b400;background:#fffbea}
+.lvbtn .n{width:40px;height:40px;border-radius:50%;background:#e8e8e8;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:600;flex:none}
+.lvbtn.done .n{background:#cdeccd;color:var(--ok)}
+.lvbtn .t{font-size:20px;font-weight:600}
+.lvbtn .s{font-size:16px;color:#555}
+.opts{display:flex;flex-wrap:wrap;gap:22px;align-items:center;margin-top:22px;padding-top:18px;border-top:1px solid #e5e5e5;font-size:17px}
+.seg{display:inline-flex;border:1px solid #ccc;border-radius:10px;overflow:hidden;margin-left:8px}
+.seg button{border:none;background:#fff;padding:8px 14px;font-size:16px;cursor:pointer}
+.seg button.on{background:#ffd75e}
+.big{font-size:20px;padding:12px 22px}
+.center{text-align:center}
+.check{width:84px;height:84px;border-radius:50%;background:#e3f4e3;color:var(--ok);font-size:52px;line-height:84px;margin:0 auto 10px}
+.row2{display:flex;gap:12px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<div id="coach">
+  <div id="meta"></div>
+  <div><div id="instr"></div><div id="fb"></div></div>
+  <div id="cbtns">
+    <button class="btn primary" id="bHint">💡 Tipp zeigen</button>
+    <button class="btn" id="bRestart">↺ Übung neu starten</button>
+    <button class="btn" id="bMenu">☰ Übersicht</button>
+  </div>
+</div>
+
+<div id="desktop">
+  <div id="icons"></div>
+  <div class="win" id="win" hidden>
+    <div class="wbar">
+      <div class="wtitle" id="wtitle"></div>
+      <div class="wctl">
+        <button data-ui="min" title="Verstecken">&#8211;</button>
+        <button data-ui="max" title="Groß / klein">&#9633;</button>
+        <button data-ui="close" class="x" title="Schließen">&#10005;</button>
+      </div>
+    </div>
+    <div class="wtool"><button class="back" data-ui="back" title="Zurück">&#8592;</button><div class="addr" id="waddr"></div></div>
+    <div class="wbody"><div class="wnav" id="wnav"></div><div class="win-content" id="wcontent"></div></div>
+  </div>
+</div>
+
+<div id="taskbar">
+  <div class="tbc">
+    <button class="tb" data-ui="start" title="Start" id="tbStart"></button>
+    <button class="tb" data-ui="tb-explorer" title="Datei-Explorer" id="tbExp"></button>
+  </div>
+  <div class="clock" id="clock"></div>
+</div>
+
+<div class="menu" id="menu" hidden></div>
+<div id="toast"></div>
+<div id="overlay" hidden><div class="card" id="card"></div></div>
+
+<script>
+/* =========================================================
+   Symbole
+   ========================================================= */
+const ICON = {
+  folder:`<svg viewBox="0 0 48 48"><path d="M4 11a3 3 0 0 1 3-3h12l4 4h18a3 3 0 0 1 3 3v22a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z" fill="#d99a20"/><path d="M4 17h40v20a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z" fill="#ffc83d"/></svg>`,
+  audio:`<svg viewBox="0 0 48 48"><path d="M10 4h19l11 11v29H10z" fill="#fff" stroke="#8a8a8a" stroke-width="1.5"/><path d="M29 4v11h11" fill="#e9e9e9" stroke="#8a8a8a" stroke-width="1.5"/><path d="M22.5 36V22.5l10-3V33" fill="none" stroke="#c2185b" stroke-width="2.5"/><circle cx="19.5" cy="36" r="3.6" fill="#c2185b"/><circle cx="29.5" cy="33" r="3.6" fill="#c2185b"/></svg>`,
+  video:`<svg viewBox="0 0 48 48"><path d="M10 4h19l11 11v29H10z" fill="#fff" stroke="#8a8a8a" stroke-width="1.5"/><path d="M29 4v11h11" fill="#e9e9e9" stroke="#8a8a8a" stroke-width="1.5"/><rect x="14.5" y="22" width="21" height="15" rx="2" fill="#5b3fc4"/><path d="M22.5 25.5v8l6.5-4z" fill="#fff"/></svg>`,
+  bin:(full)=>`<svg viewBox="0 0 48 48">${full?'<path d="M14 13l5-6 5 4 5-4 5 6z" fill="#fff" stroke="#9a9a9a"/>':''}<path d="M11 14h26l-2.5 28h-21z" fill="#d6e8f7" stroke="#4a76a8" stroke-width="2"/><rect x="8" y="10" width="32" height="5" rx="2" fill="#4a76a8"/><path d="M19 20v17M24 20v17M29 20v17" stroke="#4a76a8" stroke-width="1.6"/></svg>`,
+  start:`<svg viewBox="0 0 24 24"><rect x="2" y="2" width="9.4" height="9.4" rx="1" fill="#0078d4"/><rect x="12.6" y="2" width="9.4" height="9.4" rx="1" fill="#0078d4"/><rect x="2" y="12.6" width="9.4" height="9.4" rx="1" fill="#0078d4"/><rect x="12.6" y="12.6" width="9.4" height="9.4" rx="1" fill="#0078d4"/></svg>`,
+  monitor:`<svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="13" rx="2" fill="#3a8ee6"/><rect x="8" y="19" width="8" height="2" rx="1" fill="#555"/></svg>`,
+  cut:`<svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="1.6"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M8.2 15.8 18 3M15.8 15.8 6 3"/></svg>`,
+  copy:`<svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="1.6"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h2"/></svg>`,
+  rename:`<svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="1.6"><rect x="2.5" y="7" width="19" height="10" rx="2"/><path d="M15 4v16M13 4h4M13 20h4"/></svg>`,
+  trash:`<svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="1.6"><path d="M4 6h16M9 6V4h6v2M6 6l1 15h10l1-15M10 10v7M14 10v7"/></svg>`,
+  paste:`<svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="1.6"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1" fill="#f9f9f9"/></svg>`,
+  newf:`<svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 10v6M9 13h6"/></svg>`,
+  open:`<svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M10 14l7-7M12 7h5v5"/></svg>`,
+  restore:`<svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="1.6"><path d="M4 12a8 8 0 1 0 2.5-5.8M4 4v5h5"/></svg>`,
+  view:`<svg viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`
+};
+
+/* =========================================================
+   Hilfsfunktionen & Speicher
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = { done: [], dbl: 600 };
+try { Object.assign(store, JSON.parse(localStorage.getItem('pc-training') || '{}')); } catch (e) {}
+function save(){ try { localStorage.setItem('pc-training', JSON.stringify(store)); } catch (e) {} }
+
+/* =========================================================
+   Zustand der simulierten Oberfläche
+   ========================================================= */
+let S;
+function baseNodes(){
+  return {
+    meine:{id:'meine',name:'Meine Sachen',type:'folder',parent:'desktop'},
+    f1:{id:'f1',name:'Lieblingslied.mp3',type:'audio',parent:'desktop'},
+    f2:{id:'f2',name:'Urlaub.mp4',type:'video',parent:'desktop'},
+    f3:{id:'f3',name:'Schlager.mp3',type:'audio',parent:'desktop'},
+    f4:{id:'f4',name:'Geburtstag.mp4',type:'video',parent:'desktop'}
+  };
+}
+function fresh(){
+  return { nodes:baseNodes(), clip:null, win:{open:false,folder:'meine',min:false,max:false},
+           sel:null, renaming:null, menu:null, seq:1, hintOn:false };
+}
+const kids = f => Object.values(S.nodes).filter(n => n.parent === f);
+const fname = f => f==='desktop' ? 'Desktop' : f==='trash' ? 'Papierkorb' : (S.nodes[f] ? S.nodes[f].name : '');
+function pathOf(f){
+  if (f==='trash') return ['Papierkorb'];
+  const p = [];
+  while (f && f!=='desktop' && S.nodes[f]) { p.unshift(S.nodes[f].name); f = S.nodes[f].parent; }
+  p.unshift('Desktop');
+  return p;
+}
+function parentOf(f){
+  if (f==='desktop' || f==='trash') return 'desktop';
+  const n = S.nodes[f]; return (!n || n.parent==='trash') ? 'desktop' : n.parent;
+}
+function isInside(id, dest){ // liegt dest in id (oder ist id)?
+  while (dest && dest!=='desktop' && dest!=='trash') { if (dest===id) return true; dest = S.nodes[dest] ? S.nodes[dest].parent : null; }
+  return false;
+}
+function unique(dest, name, selfId){
+  const taken = n => kids(dest).some(k => k.id!==selfId && k.name.toLowerCase()===n.toLowerCase());
+  if (!taken(name)) return name;
+  const dot = name.lastIndexOf('.');
+  const base = dot>0 ? name.slice(0,dot) : name, ext = dot>0 ? name.slice(dot) : '';
+  for (let i=2;;i++){ const n = `${base} (${i})${ext}`; if (!taken(n)) return n; }
+}
+const hasFolder = (f, name) => kids(f).some(n => n.type==='folder' && n.name.trim().toLowerCase()===name);
+
+/* =========================================================
+   Darstellung
+   ========================================================= */
+function iconFor(n){
+  if (n.type==='bin') return ICON.bin(kids('trash').length>0);
+  return ICON[n.type];
+}
+function iconHTML(n){
+  const cls = ['icon'];
+  if (S.sel===n.id) cls.push('sel');
+  if (S.clip && S.clip.mode==='cut' && S.clip.id===n.id) cls.push('cut');
+  const label = S.renaming===n.id ? `<input class="rn" value="${esc(n.name)}" spellcheck="false">` : `<span>${esc(n.name).replace(/\.(?=[^.]+$)/, '<wbr>.')}</span>`;
+  return `<div class="${cls.join(' ')}" data-node="${n.id}">${iconFor(n)}${label}</div>`;
+}
+function render(){
+  $('#icons').innerHTML = iconHTML({id:'bin',name:'Papierkorb',type:'bin'}) + kids('desktop').map(iconHTML).join('');
+  renderWin(); renderTaskbar(); renderMenu(); highlight();
+  if (S.renaming){
+    const inp = document.querySelector('.rn');
+    if (inp){ inp.focus(); const v = inp.value, dot = v.lastIndexOf('.'); inp.setSelectionRange(0, S.nodes[S.renaming].type==='folder'||dot<1 ? v.length : dot); }
+  }
+}
+function renderWin(){
+  const w = $('#win'), W = S.win;
+  if (!W.open || W.min){ w.hidden = true; return; }
+  w.hidden = false; w.classList.toggle('max', W.max);
+  const f = W.folder, items = kids(f);
+  $('#wtitle').innerHTML = (f==='trash' ? ICON.bin(items.length>0) : f==='desktop' ? ICON.monitor : ICON.folder) + `<span>${esc(fname(f))}</span>`;
+  $('#waddr').textContent = pathOf(f).join('   ›   ');
+  $('#wnav').innerHTML = [['desktop','Desktop',ICON.monitor],['meine','Meine Sachen',ICON.folder],['trash','Papierkorb',ICON.bin(kids('trash').length>0)]]
+    .map(([k,l,ic]) => `<div class="nav ${f===k?'on':''}" data-ui="nav:${k}">${ic}<span>${l}</span></div>`).join('');
+  $('#wcontent').innerHTML = items.length ? items.map(iconHTML).join('')
+    : `<div class="empty">${f==='trash' ? 'Der Papierkorb ist leer.' : 'Dieser Ordner ist leer.'}</div>`;
+  $('[data-ui="back"]').classList.toggle('dis', f==='desktop');
+}
+function renderTaskbar(){
+  const tb = $('#tbExp');
+  tb.classList.toggle('open', S.win.open);
+  tb.classList.toggle('active', S.win.open && !S.win.min);
+}
+function renderMenu(){
+  const m = $('#menu');
+  if (!S.menu){ m.hidden = true; m.innerHTML = ''; return; }
+  const M = S.menu; let h = '';
+  const ib = (cmd,label,icon,dis) => `<div class="ib ${dis?'dis':''}" ${dis?'':`data-cmd="${cmd}"`}>${icon}<small>${label}</small></div>`;
+  const mi = (cmd,label,icon,dis) => `<div class="mi ${dis?'dis':''}" ${dis?'':`data-cmd="${cmd}"`}>${icon}<span>${label}</span></div>`;
+  if (M.kind==='node'){
+    h += `<div class="row">${ib('cut','Ausschneiden',ICON.cut)}${ib('copy','Kopieren',ICON.copy)}${ib('rename','Umbenennen',ICON.rename)}${ib('delete','Löschen',ICON.trash,M.id==='meine')}</div>`;
+    h += mi('open','Öffnen',ICON.open);
+  } else if (M.kind==='trash'){
+    h += mi('restore','Wiederherstellen',ICON.restore);
+  } else if (M.kind==='bin'){
+    h += mi('openbin','Öffnen',ICON.open);
+  } else if (M.kind==='area'){
+    h += `<div class="mi dis">${ICON.view}<span>Ansicht</span><b>›</b></div>`;
+    h += `<div class="mi" data-sub="new">${ICON.newf}<span>Neu</span><b>›</b>${M.sub ? `<div class="menu submenu">${mi('newfolder','Ordner',ICON.folder)}</div>` : ''}</div>`;
+    h += `<div class="sep"></div>` + mi('paste','Einfügen',ICON.paste,!S.clip);
+  } else {
+    h += `<div class="mi dis">${ICON.view}<span>Ansicht</span><b>›</b></div>`;
+  }
+  m.innerHTML = h; m.hidden = false;
+  m.style.left = M.x+'px'; m.style.top = M.y+'px';
+  const r = m.getBoundingClientRect();
+  if (r.right > innerWidth-8) m.style.left = Math.max(8, innerWidth-r.width-8)+'px';
+  if (r.bottom > innerHeight-8) m.style.top = Math.max(8, innerHeight-r.height-8)+'px';
+  const sm = m.querySelector('.submenu');
+  if (sm && sm.getBoundingClientRect().right > innerWidth-8) sm.classList.add('left');
+}
+function targetSel(t){
+  if (!t) return null;
+  if (t.startsWith('node:')) return `[data-node="${t.slice(5)}"]`;
+  if (t==='area:folder') return '#wcontent';
+  if (t.startsWith('ui:')) return `[data-ui="${t.slice(3)}"]`;
+  if (t.startsWith('cmd:')) return `[data-cmd="${t.slice(4)}"]`;
+  if (t==='sub:new') return '[data-sub]';
+  return null;
+}
+function highlight(){
+  document.querySelectorAll('.pulse').forEach(e => e.classList.remove('pulse'));
+  if (!S.hintOn || cur.level==null) return;
+  const st = step(); const q = targetSel(st && st.exp && st.exp.t);
+  if (q) document.querySelectorAll(q).forEach(e => e.classList.add('pulse'));
+}
+let toastT;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2600);
+}
+
+/* =========================================================
+   Aktionen
+   ========================================================= */
+function openWin(f){ S.win = {open:true, folder:f, min:false, max:S.win.open && S.win.max}; S.sel = null; }
+function navigate(f){ S.win.folder = f; S.sel = null; }
+function doClick(t){
+  if (t.startsWith('node:')) S.sel = t.slice(5);
+  else if (t.startsWith('area:')) S.sel = null;
+  else if (t==='ui:close'){ S.win.open = false; S.win.max = false; S.sel = null; }
+  else if (t==='ui:min') S.win.min = true;
+  else if (t==='ui:max') S.win.max = !S.win.max;
+  else if (t==='ui:tb-explorer'){
+    if (!S.win.open) openWin('meine'); else S.win.min = !S.win.min;
+  }
+  else if (t==='ui:start') toast('Das Startmenü brauchen wir in dieser Übung nicht.');
+  else if (t.startsWith('ui:nav:')) navigate(t.slice(7));
+  else if (t==='ui:back') navigate(parentOf(S.win.folder));
+  render();
+}
+function doDbl(t){
+  if (!t.startsWith('node:')) { render(); return; }
+  const id = t.slice(5);
+  if (id==='bin') openWin('trash');
+  else {
+    const n = S.nodes[id];
+    if (!n) return;
+    if (n.parent==='trash') toast('Gelöschte Dateien zuerst wiederherstellen.');
+    else if (n.type==='folder'){ if (S.win.open && !S.win.min) navigate(id); else openWin(id); }
+    else toast('▶  ' + n.name + ' wird abgespielt …');
+  }
+  render();
+}
+function onRight(t, e){
+  S.menu = null; S.sub = false;
+  const x = e.clientX, y = e.clientY;
+  if (t.startsWith('node:')){
+    const id = t.slice(5);
+    S.sel = id;
+    if (id==='bin') S.menu = {kind:'bin', x, y};
+    else if (S.nodes[id] && S.nodes[id].parent==='trash') S.menu = {kind:'trash', id, x, y};
+    else S.menu = {kind:'node', id, x, y};
+  } else if (t==='area:folder'){
+    S.sel = null;
+    S.menu = S.win.folder==='trash' ? {kind:'trasharea', x, y} : {kind:'area', folder:S.win.folder, x, y};
+  } else if (t==='area:desktop'){
+    S.sel = null; S.menu = {kind:'area', folder:'desktop', x, y};
+  }
+  render();
+  emit({type:'rightclick', t});
+}
+function closeMenu(){ S.menu = null; render(); emit({type:'menuclosed'}); }
+function paste(dest){
+  const c = S.clip; if (!c || !S.nodes[c.id]) return;
+  const n = S.nodes[c.id];
+  if (n.parent==='trash' || isInside(c.id, dest)) return;
+  if (c.mode==='cut'){
+    n.parent = dest; n.name = unique(dest, n.name, n.id); S.clip = null;
+  } else {
+    const cp = (src, parent) => {
+      const id = 'c' + (S.seq++);
+      let name = src.name;
+      if (kids(parent).some(k => k.name.toLowerCase()===name.toLowerCase())){
+        const dot = name.lastIndexOf('.');
+        name = dot>0 ? name.slice(0,dot)+' - Kopie'+name.slice(dot) : name+' - Kopie';
+      }
+      S.nodes[id] = {id, name:unique(parent, name), type:src.type, parent};
+      Object.values(S.nodes).filter(k => k.parent===src.id).forEach(k => cp(k, id));
+    };
+    cp(n, dest);
+  }
+}
+function runCmd(cmd){
+  const M = S.menu; if (!M) return;
+  S.menu = null;
+  const n = M.id ? S.nodes[M.id] : null;
+  if (cmd==='cut' || cmd==='copy') S.clip = {id:M.id, mode:cmd};
+  else if (cmd==='rename') S.renaming = M.id;
+  else if (cmd==='delete' && n && n.id!=='meine'){
+    n.orig = n.parent; n.parent = 'trash'; S.sel = null;
+    if (S.clip && S.clip.id===n.id) S.clip = null;
+  }
+  else if (cmd==='restore' && n){
+    n.parent = (n.orig && (n.orig==='desktop' || (S.nodes[n.orig] && S.nodes[n.orig].parent!=='trash'))) ? n.orig : 'desktop';
+    n.name = unique(n.parent, n.name, n.id); S.sel = null;
+  }
+  else if (cmd==='open'){ render(); doDbl('node:'+M.id); emit({type:'cmd', cmd, id:M.id}); return; }
+  else if (cmd==='openbin') openWin('trash');
+  else if (cmd==='paste') paste(M.folder);
+  else if (cmd==='newfolder'){
+    const id = 'n' + (S.seq++);
+    S.nodes[id] = {id, name:unique(M.folder, 'Neuer Ordner'), type:'folder', parent:M.folder};
+    S.sel = id; S.renaming = id;
+  }
+  render();
+  emit({type:'cmd', cmd, id:M.id, folder:M.folder});
+}
+function commitRename(){
+  const id = S.renaming; if (!id) return;
+  const inp = document.querySelector('.rn');
+  const n = S.nodes[id];
+  const v = inp ? inp.value.trim().replace(/[\\/:*?"<>|]/g, '') : '';
+  if (v) n.name = unique(n.parent, v, id);
+  S.renaming = null;
+  render();
+  emit({type:'renamed', id, name:n.name});
+}
+
+/* =========================================================
+   Maus- und Tastatureingaben
+   ========================================================= */
+function resolve(el){
+  if (!el || !el.closest) return 'none';
+  let x;
+  if ((x = el.closest('[data-cmd]'))) return 'cmd:' + x.dataset.cmd;
+  if (el.closest('[data-sub]')) return 'sub:new';
+  if (el.closest('.menu')) return 'menu';
+  if ((x = el.closest('[data-node]'))) return 'node:' + x.dataset.node;
+  if ((x = el.closest('[data-ui]'))) return 'ui:' + x.dataset.ui;
+  if (el.closest('#wcontent')) return 'area:folder';
+  if (el.closest('.win')) return 'ui:win';
+  if (el.closest('#taskbar')) return 'ui:taskbar';
+  if (el.closest('#desktop')) return 'area:desktop';
+  return 'none';
+}
+let down = null, last = {t:null, time:0}, pend = null;
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('mousedown', e => {
+  if (e.target.closest('#coach, #overlay, .rn')) return;
+  if (S.renaming) commitRename();
+  const t = resolve(e.target);
+  if (e.button===2){ e.preventDefault(); onRight(t, e); return; }
+  if (e.button===0) down = {t, x:e.clientX, y:e.clientY};
+});
+document.addEventListener('mouseup', e => {
+  if (e.button!==0 || !down) return;
+  const d = down; down = null;
+  const t = resolve(e.target);
+  if (t!==d.t || Math.hypot(e.clientX-d.x, e.clientY-d.y) > 16) return;
+  onLeft(t);
+});
+document.addEventListener('mouseover', e => {
+  if (!S.menu || S.menu.kind!=='area' || S.menu.sub) return;
+  if (e.target.closest && e.target.closest('[data-sub]')){ S.menu.sub = true; render(); emit({type:'submenu'}); }
+});
+function onLeft(t){
+  if (t.startsWith('cmd:')){ runCmd(t.slice(4)); return; }
+  if (t==='sub:new'){ if (!S.menu.sub){ S.menu.sub = true; render(); emit({type:'submenu'}); } return; }
+  if (t==='menu') return;
+  if (S.menu){ last = {t:null, time:0}; closeMenu(); return; }
+  const now = performance.now();
+  if (last.t===t && t.startsWith('node:') && now-last.time <= store.dbl){
+    last = {t:null, time:0}; clearTimeout(pend);
+    doDbl(t); emit({type:'dblclick', t}); return;
+  }
+  last = {t, time:now};
+  doClick(t); emit({type:'click', t});
+}
+document.addEventListener('keydown', e => {
+  if (e.target.classList && e.target.classList.contains('rn')){
+    if (e.key==='Enter'){ e.preventDefault(); commitRename(); }
+    else if (e.key==='Escape'){ S.renaming = null; render(); }
+    return;
+  }
+  if (e.key==='Escape' && S.menu) closeMenu();
+});
+
+/* =========================================================
+   Übungen
+   ========================================================= */
+const UI_LABEL = {close:'das Kreuz ✕', min:'der Strich –', max:'der Kasten □', 'tb-explorer':'der gelbe Ordner in der Taskleiste', start:'das Startmenü', back:'der Zurück-Pfeil ←'};
+const CMD_LABEL = {cut:'Ausschneiden (Schere)', copy:'Kopieren (zwei Blätter)', rename:'Umbenennen', delete:'Löschen (Mülleimer)', paste:'Einfügen (Klemmbrett)', restore:'Wiederherstellen', open:'Öffnen', openbin:'Öffnen', newfolder:'Ordner'};
+function label(t){
+  if (t.startsWith('node:')){ const id = t.slice(5); if (id==='bin') return '„Papierkorb“'; const n = S.nodes[id]; return n ? `„${esc(n.name)}“` : 'das Symbol'; }
+  if (t==='area:folder') return 'die freie weiße Fläche im Fenster';
+  if (t==='area:desktop') return 'eine freie Stelle auf dem Bildschirm';
+  if (t.startsWith('ui:nav:')) return '„' + fname(t.slice(7)) + '“ links im Fenster';
+  if (t.startsWith('ui:')) return UI_LABEL[t.slice(3)] || 'diese Stelle';
+  return 'diese Stelle';
+}
+function expect(type, t, stateDone){
+  return {
+    exp:{type, t},
+    done:(ev, S) => (ev.type===type && ev.t===t) || (stateDone ? stateDone(S) : false),
+    mistake:(ev) => {
+      if (!['click','dblclick','rightclick'].includes(ev.type)) return null;
+      if (ev.t===t){
+        if (type==='rightclick') return 'Das war die linke Taste. Bitte mit der <b>rechten</b> Taste klicken.';
+        if (type==='dblclick' && ev.type==='rightclick') return 'Das war die rechte Taste. Bitte <b>zweimal schnell</b> mit der <b>linken</b> Taste klicken.';
+        if (type==='dblclick' && ev.type==='click') return {later:'Fast! Bitte <b>zweimal schnell</b> hintereinander klicken und die Maus dabei ruhig halten.'};
+        if (type==='click' && ev.type==='rightclick') return 'Das war die rechte Taste. Bitte mit der <b>linken</b> Taste klicken.';
+        return null;
+      }
+      if (/^(area:|none$|ui:win$|ui:taskbar$|menu$)/.test(ev.t)) return null;
+      return `Das war ${label(ev.t)}. Gesucht ist ${label(t)}.`;
+    }
+  };
+}
+function cmdStep(cmd, check, wrongMsg){
+  return {
+    exp:{t:'cmd:'+cmd},
+    done:(ev, S) => ev.type==='cmd' && ev.cmd===cmd && (!check || check(ev, S)),
+    mistake:(ev) => {
+      if (ev.type!=='cmd') return null;
+      if (ev.cmd!==cmd) return `Das war „${CMD_LABEL[ev.cmd] || ev.cmd}“. Gesucht ist „${CMD_LABEL[cmd]}“.`;
+      return wrongMsg || 'Das war nicht ganz richtig.';
+    }
+  };
+}
+const winOn = f => S => S.win.open && !S.win.min && S.win.folder===f;
+
+const LEVELS = [
+  { title:'Die Maus', intro:'Klicken, Doppelklicken und Rechtsklicken.', setup(){}, steps:[
+    {...expect('click','node:f1'),
+      text:'Klicke <b>einmal</b> mit der <b>linken</b> Taste auf „Lieblingslied.mp3“.',
+      hint:'Die linke Taste ist die große Taste links auf der Maus. Einmal kurz drücken.',
+      ok:'Richtig! Die Datei ist jetzt markiert.'},
+    {...expect('dblclick','node:meine', winOn('meine')),
+      text:'Öffne den Ordner „Meine Sachen“: <b>zweimal schnell</b> mit der <b>linken</b> Taste klicken.',
+      hint:'Zwei schnelle Klicks direkt hintereinander, wie Anklopfen: tock-tock. Die Maus dabei nicht bewegen.',
+      ok:'Prima! Ein Fenster ist aufgegangen.'},
+    {...expect('click','ui:close', S => !S.win.open),
+      text:'Schließe das Fenster mit dem <b>Kreuz ✕</b> oben rechts im Fenster.',
+      hint:'Das Kreuz ist ganz oben rechts im Fenster. Einmal mit der linken Taste klicken.',
+      ok:'Gut gemacht! Das Fenster ist zu.'},
+    {...expect('rightclick','node:f2'),
+      text:'Klicke mit der <b>rechten</b> Taste auf „Urlaub.mp4“. Ein kleines Menü geht auf.',
+      hint:'Die rechte Taste ist die Taste rechts auf der Maus. Einmal kurz drücken.',
+      ok:'Genau! Das Menü zeigt, was man mit der Datei machen kann.'},
+    {exp:{t:null}, done:ev => ev.type==='menuclosed', mistake:() => null,
+      text:'Schließe das Menü wieder: Klicke mit der <b>linken</b> Taste auf eine <b>freie Stelle</b> auf dem Bildschirm.',
+      hint:'Eine freie Stelle ist da, wo kein Symbol ist, zum Beispiel in der Mitte. Oder die Taste <b>Esc</b> oben links auf der Tastatur drücken.',
+      ok:'Super!'}
+  ]},
+  { title:'Ordner anlegen', intro:'Einen neuen Ordner machen und ihm einen Namen geben.', setup(){}, steps:[
+    {...expect('dblclick','node:meine', winOn('meine')), skip:true,
+      text:'Öffne den Ordner „Meine Sachen“ mit einem <b>Doppelklick</b>.',
+      hint:'Zweimal schnell mit der linken Taste auf den gelben Ordner „Meine Sachen“ klicken.',
+      ok:'Das Fenster ist offen.'},
+    {...expect('rightclick','area:folder'),
+      text:'Klicke mit der <b>rechten</b> Taste auf die <b>freie weiße Fläche</b> im Fenster.',
+      hint:'Die weiße Fläche ist der große leere Bereich im Fenster. Dort mit der rechten Taste klicken.',
+      ok:'Das Menü ist offen.'},
+    {exp:{t:'sub:new'}, back:1, done:ev => ev.type==='submenu', mistake:() => null,
+      text:'Zeige mit der Maus auf <b>Neu</b> im Menü.',
+      hint:'„Neu“ steht im Menü. Sobald die Maus darauf zeigt, geht rechts daneben ein zweites Menü auf.',
+      ok:'Rechts ist ein zweites Menü aufgegangen.'},
+    {...cmdStep('newfolder'), back:1,
+      text:'Klicke im zweiten Menü auf <b>Ordner</b>.',
+      hint:'Im kleinen Menü rechts steht „Ordner“ mit einem gelben Ordner-Symbol.',
+      ok:'Ein neuer Ordner ist da!'},
+    {exp:{t:null},
+      done:(ev, S) => !S.renaming && hasFolder('meine','musik'),
+      mistake:(ev, S) => ev.type==='renamed' ? `Der Ordner heißt jetzt „${esc(S.nodes[ev.id].name)}“. Klicke ihn mit der rechten Taste an, wähle <b>Umbenennen</b> und tippe „Musik“.` : null,
+      text:'Tippe den Namen <b>Musik</b> und drücke dann die Taste <b>Enter ↵</b>.',
+      hint:'„Neuer Ordner“ ist blau markiert. Einfach lostippen, dann wird es ersetzt. Enter ist die große Taste rechts mit dem Haken-Pfeil ↵.',
+      ok:'Der Ordner heißt jetzt Musik.'},
+    {exp:{t:null}, skip:true, done:(ev, S) => !S.renaming && hasFolder('meine','videos'), mistake:() => null,
+      text:'Jetzt allein: Lege einen zweiten Ordner mit dem Namen <b>Videos</b> an.',
+      hint:'Rechte Taste auf die freie weiße Fläche → <b>Neu</b> → <b>Ordner</b> → „Videos“ tippen → <b>Enter</b>.',
+      ok:'Toll! Beide Ordner sind fertig.'}
+  ]},
+  { title:'Ausschneiden und Einfügen', intro:'Musik und Videos in die richtigen Ordner bringen.',
+    setup(S){
+      S.nodes.m1 = {id:'m1', name:'Musik', type:'folder', parent:'meine'};
+      S.nodes.v1 = {id:'v1', name:'Videos', type:'folder', parent:'meine'};
+      S.win = {open:true, folder:'meine', min:false, max:false};
+    }, steps:[
+    {...expect('rightclick','node:f1'),
+      text:'Klicke mit der <b>rechten</b> Taste auf „Lieblingslied.mp3“ (links auf dem Bildschirm).',
+      hint:'Die Datei mit der roten Musiknote, links auf dem blauen Bildschirm.',
+      ok:'Das Menü ist offen.'},
+    {...cmdStep('cut', ev => ev.id==='f1', 'Das war die falsche Datei.'), back:0,
+      text:'Klicke oben im Menü auf die <b>Schere</b> (Ausschneiden).',
+      hint:'Ganz oben im Menü sind kleine Bilder. Die Schere ist das erste.',
+      ok:'Die Datei ist jetzt blass. Sie wartet auf ihren neuen Platz.'},
+    {...expect('dblclick','node:m1', winOn('m1')),
+      text:'Öffne im Fenster den Ordner <b>Musik</b> mit einem Doppelklick.',
+      hint:'Der Ordner „Musik“ ist im Fenster rechts. Zweimal schnell mit der linken Taste darauf klicken.',
+      ok:'Du bist jetzt im Ordner Musik.'},
+    {...expect('rightclick','area:folder'),
+      text:'Klicke mit der <b>rechten</b> Taste auf die <b>freie weiße Fläche</b> im Ordner Musik.',
+      hint:'Der große leere weiße Bereich im Fenster.',
+      ok:'Das Menü ist offen.'},
+    {...cmdStep('paste', (ev, S) => S.nodes.f1.parent==='m1', 'Eingefügt, aber nicht im Ordner Musik. Wir machen es noch einmal.'),
+      back:3, failBack:0,
+      text:'Klicke auf <b>Einfügen</b> (Klemmbrett).',
+      hint:'„Einfügen“ steht unten im Menü, mit einem Klemmbrett-Symbol.',
+      ok:'Geschafft! Das Lied ist jetzt im Ordner Musik.'},
+    {exp:{t:null}, done:(ev, S) => S.nodes.f3.parent==='m1', mistake:() => null,
+      text:'Jetzt allein: Bringe <b>Schlager.mp3</b> auch in den Ordner <b>Musik</b>.',
+      hint:'Rechte Taste auf „Schlager.mp3“ → <b>Schere</b> → im Fenster den Ordner Musik öffnen → rechte Taste auf die freie Fläche → <b>Einfügen</b>.',
+      ok:'Sehr gut!'},
+    {exp:{t:null}, done:(ev, S) => S.nodes.f2.parent==='v1' && S.nodes.f4.parent==='v1', mistake:() => null,
+      text:'Zum Schluss: Bringe <b>Urlaub.mp4</b> und <b>Geburtstag.mp4</b> in den Ordner <b>Videos</b>.',
+      hint:'Mit dem Pfeil <b>←</b> oben links im Fenster kommst du zurück zu „Meine Sachen“. Dort den Ordner Videos öffnen. Dann wie vorher: Schere, dann Einfügen.',
+      ok:'Alles aufgeräumt!'}
+  ]},
+  { title:'Löschen und zurückholen', intro:'Etwas wegwerfen und aus dem Papierkorb wiederholen.',
+    setup(S){ S.nodes.f5 = {id:'f5', name:'Alte Werbung.mp4', type:'video', parent:'desktop'}; }, steps:[
+    {...expect('rightclick','node:f5'),
+      text:'Klicke mit der <b>rechten</b> Taste auf „Alte Werbung.mp4“.',
+      hint:'Die Datei steht links auf dem Bildschirm, bei den anderen Symbolen.',
+      ok:'Das Menü ist offen.'},
+    {...cmdStep('delete', ev => ev.id==='f5', 'Das war die falsche Datei.'), back:0,
+      text:'Klicke oben im Menü auf den <b>Mülleimer</b> (Löschen).',
+      hint:'Ganz oben im Menü sind kleine Bilder. Der Mülleimer ist das letzte.',
+      ok:'Weg vom Bildschirm. Sie liegt jetzt im Papierkorb, nicht für immer weg.'},
+    {exp:{t:null}, done:(ev, S) => S.nodes.f2.parent==='trash', mistake:() => null,
+      text:'Lösche zur Übung auch <b>Urlaub.mp4</b>. Keine Sorge, wir holen es gleich zurück.',
+      hint:'Rechte Taste auf „Urlaub.mp4“ → <b>Mülleimer</b>.',
+      ok:'Gelöscht. Jetzt holen wir es zurück.'},
+    {...expect('dblclick','node:bin', winOn('trash')),
+      text:'Öffne den <b>Papierkorb</b> oben links auf dem Bildschirm mit einem <b>Doppelklick</b>.',
+      hint:'Der Papierkorb ist das erste Symbol oben links. Zweimal schnell mit der linken Taste klicken.',
+      ok:'Hier liegen die gelöschten Dateien.'},
+    {...expect('rightclick','node:f2'),
+      text:'Klicke im Papierkorb mit der <b>rechten</b> Taste auf „Urlaub.mp4“.',
+      hint:'„Urlaub.mp4“ ist im Fenster zu sehen.',
+      ok:'Das Menü ist offen.'},
+    {...cmdStep('restore', ev => ev.id==='f2', 'Das war die falsche Datei.'), back:4,
+      text:'Klicke auf <b>Wiederherstellen</b>.',
+      hint:'„Wiederherstellen“ ist der Eintrag mit dem runden Pfeil.',
+      ok:'Geschafft! „Urlaub.mp4“ ist wieder auf dem Bildschirm.'},
+    {...expect('click','ui:close', S => !S.win.open),
+      text:'Schließe den Papierkorb mit dem <b>Kreuz ✕</b>.',
+      hint:'Das Kreuz ist ganz oben rechts im Fenster.',
+      ok:'Fertig!'}
+  ]},
+  { title:'Fenster', intro:'Verstecken, wiederfinden, groß und klein machen.', setup(){}, steps:[
+    {...expect('dblclick','node:meine', winOn('meine')), skip:true,
+      text:'Öffne den Ordner „Meine Sachen“ mit einem <b>Doppelklick</b>.',
+      hint:'Zweimal schnell mit der linken Taste auf den gelben Ordner klicken.',
+      ok:'Das Fenster ist offen.'},
+    {...expect('click','ui:min', S => S.win.open && S.win.min),
+      text:'Klicke oben rechts im Fenster auf den <b>Strich –</b>. Das Fenster wird versteckt.',
+      hint:'Oben rechts sind drei Knöpfe. Der Strich ist der erste davon.',
+      ok:'Das Fenster ist versteckt, aber nicht zu.'},
+    {...expect('click','ui:tb-explorer', S => S.win.open && !S.win.min),
+      text:'Hole es zurück: Klicke unten in der Taskleiste auf den <b>gelben Ordner</b>. Der kleine Strich darunter zeigt: Er ist noch offen.',
+      hint:'Die Taskleiste ist die helle Leiste ganz unten. Dort ist ein gelber Ordner.',
+      ok:'Da ist es wieder!'},
+    {...expect('click','ui:max', S => S.win.open && S.win.max),
+      text:'Mache das Fenster groß: Klicke auf den <b>Kasten □</b>.',
+      hint:'Oben rechts im Fenster, der mittlere Knopf.',
+      ok:'Jetzt ist es groß.'},
+    {...expect('click','ui:max', S => S.win.open && !S.win.max && !S.win.min),
+      text:'Und wieder kleiner: Klicke noch einmal auf den <b>Kasten □</b>.',
+      hint:'Derselbe Knopf oben rechts, in der Mitte.',
+      ok:'Wieder normal.'},
+    {...expect('click','ui:close', S => !S.win.open),
+      text:'Schließe das Fenster mit dem <b>Kreuz ✕</b>.',
+      hint:'Oben rechts, der letzte Knopf.',
+      ok:'Fertig!'}
+  ]}
+];
+
+/* =========================================================
+   Ablaufsteuerung
+   ========================================================= */
+let cur = {level:null, step:0};
+let quietUntil = 0, hintTimer = null;
+const lvl = () => LEVELS[cur.level];
+const step = () => lvl() && lvl().steps[cur.step];
+
+function fb(kind, msg){ $('#fb').innerHTML = msg ? `<span class="${kind}">${msg}</span>` : ''; }
+function emit(ev){
+  if (cur.level==null || !$('#overlay').hidden) return;
+  const st = step(); if (!st) return;
+  if (st.done(ev, S)){ advance(st.ok); return; }
+  if (ev.type==='menuclosed' && st.back!=null){
+    cur.step = st.back; setStep();
+    fb('warn','Das Menü ist wieder zugegangen. Bitte noch einmal mit der <b>rechten</b> Taste klicken.');
+    return;
+  }
+  const msg = st.mistake ? st.mistake(ev, S) : null;
+  if (ev.type==='cmd' && st.back!=null){
+    cur.step = st.failBack!=null ? st.failBack : st.back; setStep();
+    fb('warn', (msg || 'Das war nicht der gesuchte Eintrag.') + ' Bitte noch einmal.');
+    return;
+  }
+  if (performance.now() < quietUntil) return;
+  if (msg && msg.later){ clearTimeout(pend); pend = setTimeout(() => fb('warn', msg.later), store.dbl + 80); return; }
+  if (msg) fb('warn', msg);
+}
+function advance(ok){
+  clearTimeout(pend);
+  const L = lvl();
+  cur.step++;
+  while (cur.step < L.steps.length && L.steps[cur.step].skip && L.steps[cur.step].done({type:'state'}, S)) cur.step++;
+  if (cur.step >= L.steps.length){ finishLevel(); return; }
+  quietUntil = performance.now() + store.dbl + 150;
+  setStep();
+  fb('ok', '✓ ' + (ok || 'Richtig!'));
+}
+function setStep(){
+  S.hintOn = false;
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(showHint, 25000);
+  renderCoach(); render();
+}
+function showHint(){
+  const st = step(); if (!st || !$('#overlay').hidden) return;
+  S.hintOn = true; fb('hint', '💡 ' + st.hint); render();
+}
+function renderCoach(){
+  const L = lvl();
+  if (!L){ $('#meta').innerHTML = ''; $('#instr').innerHTML = 'Wähle eine Übung aus.'; layout(); return; }
+  $('#meta').innerHTML = `<div class="lv">Übung ${cur.level+1} von ${LEVELS.length}</div><div class="lt">${L.title}</div>
+    <div class="dots">${L.steps.map((_, i) => `<i class="${i<cur.step?'d':i===cur.step?'c':''}"></i>`).join('')}</div>`;
+  $('#instr').innerHTML = step().text;
+  layout();
+}
+function layout(){ document.documentElement.style.setProperty('--coach-h', $('#coach').offsetHeight + 'px'); }
+
+function goFullscreen(){
+  const d = document.documentElement;
+  if (document.fullscreenElement || !d.requestFullscreen) return;
+  d.requestFullscreen().then(() => {
+    if (navigator.keyboard && navigator.keyboard.lock) navigator.keyboard.lock(['Escape']).catch(() => {});
+  }).catch(() => {});
+}
+function startLevel(i){
+  goFullscreen();
+  clearTimeout(pend);
+  quietUntil = 0; last = {t:null, time:0};
+  cur = {level:i, step:0};
+  S = fresh(); LEVELS[i].setup(S);
+  $('#overlay').hidden = true;
+  fb('', ''); setStep();
+}
+function finishLevel(){
+  clearTimeout(hintTimer);
+  if (!store.done.includes(cur.level)) store.done.push(cur.level);
+  save();
+  const next = cur.level + 1 < LEVELS.length ? cur.level + 1 : null;
+  fb('ok', '✓ Übung geschafft!');
+  showCard(`<div class="center"><div class="check">✓</div><h1>Geschafft!</h1>
+    <p>Die Übung „${LEVELS[cur.level].title}“ hast du erledigt.</p>
+    <div class="row2">
+      ${next!=null ? `<button class="btn primary big" data-go="${next}">Weiter: ${LEVELS[next].title}</button>` : ''}
+      <button class="btn big" data-go="${cur.level}">Noch einmal üben</button>
+      <button class="btn big" data-overview>Übersicht</button>
+    </div></div>`);
+}
+function showCard(html){ $('#card').innerHTML = html; $('#overlay').hidden = false; }
+function showOverview(welcome){
+  const speeds = [['Langsam',900],['Mittel',600],['Schnell',400]];
+  showCard(`<h1>${welcome ? 'Willkommen zum PC-Training' : 'Übersicht'}</h1>
+    <p>${welcome ? 'Hier übst du in Ruhe am nachgebauten Bildschirm. <b>Es kann nichts kaputtgehen.</b> ' : ''}Oben steht immer, was als Nächstes zu tun ist. Wenn du nicht weiterweißt: <b>💡 Tipp zeigen</b>.</p>
+    <div class="lvls">${LEVELS.map((L, i) => `<button class="lvbtn ${store.done.includes(i)?'done':''}" data-go="${i}">
+      <span class="n">${store.done.includes(i) ? '✓' : i+1}</span><span><div class="t">${L.title}</div><div class="s">${L.intro}</div></span></button>`).join('')}</div>
+    <div class="opts">
+      <span>Doppelklick-Tempo:<span class="seg">${speeds.map(([l, v]) => `<button data-dbl="${v}" class="${store.dbl===v?'on':''}">${l}</button>`).join('')}</span></span>
+      <button class="btn" data-fs>⛶ Vollbild</button>
+      ${cur.level!=null ? '<button class="btn" data-close>Zurück zur Übung</button>' : ''}
+    </div>`);
+}
+$('#overlay').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.go!=null) startLevel(+b.dataset.go);
+  else if (b.dataset.dbl){ store.dbl = +b.dataset.dbl; save(); showOverview(cur.level==null); }
+  else if (b.hasAttribute('data-fs')) goFullscreen();
+  else if (b.hasAttribute('data-overview')) showOverview(false);
+  else if (b.hasAttribute('data-close')) $('#overlay').hidden = true;
+});
+$('#bHint').addEventListener('click', showHint);
+$('#bRestart').addEventListener('click', () => { if (cur.level!=null) startLevel(cur.level); });
+$('#bMenu').addEventListener('click', () => showOverview(false));
+
+/* =========================================================
+   Start
+   ========================================================= */
+$('#tbStart').innerHTML = ICON.start;
+$('#tbExp').innerHTML = ICON.folder;
+function tick(){
+  const d = new Date();
+  $('#clock').innerHTML = d.toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'}) + '<br>' + d.toLocaleDateString('de-DE');
+}
+tick(); setInterval(tick, 15000);
+addEventListener('resize', () => { layout(); if (S.menu) render(); });
+S = fresh();
+renderCoach(); render();
+showOverview(true);
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
